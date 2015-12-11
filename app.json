@@ -1,0 +1,6 @@
+{
+  "name": "Heroku-AWS-S3-php",
+  "description": "A PHP app that can upload and download files from AWS S3 and host on Heroku",
+  "repository": "https://github.com/PhyrexTsai/Heroku-AWS-S3-php",
+  "addons": []
+}

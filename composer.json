@@ -1,0 +1,9 @@
+{
+  "require" : {
+    "predis/predis": "1.0.3",
+    "aws/aws-sdk-php": "*"
+  },
+  "require-dev": {
+    "heroku/heroku-buildpack-php": "*"
+  }
+}
