@@ -1,7 +1,29 @@
 <?php
 header("Content-type: text/html; charset=utf-8");
 require('../vendor/autoload.php');
+define("DATA_SEPARATOR", "@#@");
 $redis = new Predis\Client(getenv('REDIS_URL'));
+
+use Aws\S3\S3Client;
+
+$s3 = new S3Client([
+    'version' => 'latest',
+    'region'  => 'us-west-2'
+]);
+
+$key = getenv('AWS_ACCESS_KEY_ID')?: die('No "AWS_ACCESS_KEY_ID" config var in found in env!');
+$secret = getenv('AWS_SECRET_ACCESS_KEY')?: die('No "AWS_SECRET_ACCESS_KEY" config var in found in env!');
+$default_bucket = getenv('S3_BUCKET')?: die('No "S3_BUCKET" config var in found in env!');
+$txt = "imagelist.txt";
+
+if($s3->doesObjectExist($default_bucket, $txt)){
+    $txtfile = $s3->getObject([
+        'Bucket'    => $default_bucket,
+        'Key'       => $txt
+    ]);
+    $txtbody = $txtfile['Body'];
+    $lines = explode(PHP_EOL, $txtbody);
+}
 ?>
 <!doctype html>
 <html>
@@ -51,24 +73,47 @@ $redis = new Predis\Client(getenv('REDIS_URL'));
                     <th>File type</th>
                     <th>File size</th>
                     <th>File</th>
+                    <th>Place</th>
                 </tr>
             <?php 
                $arList = $redis->keys("*");
-        	   foreach($arList as $num => $key){
-        	       $splitKey = preg_split("/@#@/", $key);
-        	       
-        	       $filedata = $redis->get($key);
-        	       $bucket = $splitKey[4];
-        	       $filename = $splitKey[0];
-        	       $filetype = $splitKey[1];
-        	       $filesize = $splitKey[2];
-        	       echo '<tr>';
-        	       echo '<td>'.$bucket.'</td>';
-        	       echo '<td>'.$filename.'</td>';
-        	       echo '<td>'.$filetype.'</td>';
-        	       echo '<td>'.$filesize.'</td>';
-        	       echo '<td><a href="https://s3-us-west-2.amazonaws.com/'.$bucket.'/'.$filename.'"><img src="data:image/jpeg;base64,' . $filedata . '" width="100" /></a></td>';
-        	       echo '</tr>';
+        	   //foreach($arList as $num => $key){
+               foreach($lines as $key){
+                   if($redis->exists($key)){
+                       // redis exsist
+            	       $splitKey = preg_split("/@#@/", $key);
+            	       
+            	       $filedata = $redis->get($key);
+            	       $bucket = $splitKey[4];
+            	       $filename = $splitKey[0];
+            	       $filetype = $splitKey[1];
+            	       $filesize = $splitKey[2];
+            	       echo '<tr>';
+            	       echo '<td>'.$bucket.'</td>';
+            	       echo '<td>'.$filename.'</td>';
+            	       echo '<td>'.$filetype.'</td>';
+            	       echo '<td>'.$filesize.'</td>';
+            	       echo '<td><a href="https://s3-us-west-2.amazonaws.com/'.$bucket.'/'.$filename.'"><img src="data:image/jpeg;base64,' . $filedata . '" width="100" /></a></td>';
+            	       echo '<td>Redis</td>';
+            	       echo '</tr>';
+                   }else if($key != ''){
+                       // only exsist on AWS S3
+                       $splitKey = preg_split("/@#@/", $key);
+                       
+                       $filedata = $redis->get($key);
+                       $bucket = $splitKey[4];
+                       $filename = $splitKey[0];
+                       $filetype = $splitKey[1];
+                       $filesize = $splitKey[2];
+                       echo '<tr>';
+                       echo '<td>'.$bucket.'</td>';
+                       echo '<td>'.$filename.'</td>';
+                       echo '<td>'.$filetype.'</td>';
+                       echo '<td>'.$filesize.'</td>';
+                       echo '<td><a href="https://s3-us-west-2.amazonaws.com/'.$bucket.'/'.$filename.'"><img src="https://s3-us-west-2.amazonaws.com/'.$bucket.'/'.$filename.'" width="100" /></a></td>';
+                       echo '<td>AWS S3</td>';
+                       echo '</tr>';
+                   }
         	   }
             ?>
     	    </table>

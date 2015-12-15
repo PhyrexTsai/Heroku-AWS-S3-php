@@ -13,6 +13,8 @@ $s3 = new S3Client([
 
 $key = getenv('AWS_ACCESS_KEY_ID')?: die('No "AWS_ACCESS_KEY_ID" config var in found in env!');
 $secret = getenv('AWS_SECRET_ACCESS_KEY')?: die('No "AWS_SECRET_ACCESS_KEY" config var in found in env!');
+$default_bucket = getenv('S3_BUCKET')?: die('No "S3_BUCKET" config var in found in env!');
+$txt = "imagelist.txt";
 
 $message = "";
 if(!empty($_POST['submit'])){
@@ -25,10 +27,46 @@ if(!empty($_POST['submit'])){
         $bucket = $_POST['bucket'];
         // insert into redis use base64
         $base64 = base64_encode(file_get_contents($file));
-        $redis->mset($filename.DATA_SEPARATOR.$filetype.DATA_SEPARATOR.$filesize.DATA_SEPARATOR.time().DATA_SEPARATOR.$bucket, $base64);
+        $filekey = $filename.DATA_SEPARATOR.$filetype.DATA_SEPARATOR.$filesize.DATA_SEPARATOR.time().DATA_SEPARATOR.$bucket;
+        $redis->mset($filekey, $base64);
 
-        // upload file to selected bucket
+        // create or update imagelist.txt
+        if($s3->doesObjectExist($default_bucket, $txt)){
+            // exsist
+            $txtfile = $s3->getObject([
+                'Bucket'    => $default_bucket,
+                'Key'       => $txt
+            ]);
+            $txtbody = $txtfile['Body'].$filekey.PHP_EOL;
+            try {
+                $s3->deleteObject([
+                    'Bucket' => $default_bucket,
+                    'Key'    => $txt
+                ]);
+                $s3->putObject([
+                    'Bucket' => $default_bucket,
+                    'Key'    => $txt,
+                    'Body'   => $txtbody,
+                    'ACL'    => 'public-read-write',  // use read write
+                ]);
+            } catch (Aws\Exception\S3Exception $e) {
+                $message .= "There was an error deleting and creating imagelist.txt.\r\n";
+            }
+        }else{
+            // create imagelist.txt
+            try {
+                $s3->putObject([
+                    'Bucket' => $default_bucket,
+                    'Key'    => $txt,
+                    'Body'   => $filekey.PHP_EOL,
+                    'ACL'    => 'public-read-write',  // use read write
+                ]);
+            } catch (Aws\Exception\S3Exception $e) {
+                $message .= "There was an error creating imagelist.txt.\r\n";
+            }
+        }
         
+        // upload file to selected bucket
         try {
             $s3->putObject([
                 'Bucket' => $bucket,
@@ -36,12 +74,12 @@ if(!empty($_POST['submit'])){
                 'Body'   => $filedata,
                 'ACL'    => 'public-read',  // use read
             ]);
-            $message = "We successfully uploaded file.";
+            $message .= "Successfully uploaded file.\r\n";
         } catch (Aws\Exception\S3Exception $e) {
-            $message = "There was an error uploading the file.";
+            $message .= "There was an error uploading the file.\r\n";
         }
     }else{
-        $message = "Something went wrong while uploading file... sorry.";
+        $message .= "Something went wrong while uploading file... sorry.\r\n";
     }
 }
 
