@@ -1,25 +1,20 @@
 <?php
 header("Content-type: text/html; charset=utf-8");
+require('config.php');
 require('../vendor/autoload.php');
-define("DATA_SEPARATOR", "@#@");
-$redis = new Predis\Client(getenv('REDIS_URL'));
-
 use Aws\S3\S3Client;
 
+$redis = new Predis\Client(getenv('REDIS_URL'));
+
 $s3 = new S3Client([
-    'version' => 'latest',
-    'region'  => 'us-west-2'
+    'version' => S3_VERSION,
+    'region'  => S3_REGION
 ]);
 
-$key = getenv('AWS_ACCESS_KEY_ID')?: die('No "AWS_ACCESS_KEY_ID" config var in found in env!');
-$secret = getenv('AWS_SECRET_ACCESS_KEY')?: die('No "AWS_SECRET_ACCESS_KEY" config var in found in env!');
-$default_bucket = getenv('S3_BUCKET')?: die('No "S3_BUCKET" config var in found in env!');
-$txt = "imagelist.txt";
-
-if($s3->doesObjectExist($default_bucket, $txt)){
+if($s3->doesObjectExist(S3_BUCKET, IMAGELIST_FILE)){
     $txtfile = $s3->getObject([
-        'Bucket'    => $default_bucket,
-        'Key'       => $txt
+        'Bucket'    => S3_BUCKET,
+        'Key'       => IMAGELIST_FILE
     ]);
     $txtbody = $txtfile['Body'];
     $lines = explode(PHP_EOL, $txtbody);
