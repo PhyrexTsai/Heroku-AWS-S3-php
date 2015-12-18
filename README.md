@@ -4,6 +4,11 @@
 <img src="https://camo.githubusercontent.com/c0824806f5221ebb7d25e559568582dd39dd1170/68747470733a2f2f7777772e6865726f6b7563646e2e636f6d2f6465706c6f792f627574746f6e2e706e67" alt="Deploy" data-canonical-src="https://www.herokucdn.com/deploy/button.png" style="max-width:100%;">
 </a>
 
+<h2>Introduction</h2>
+This project use AWS S3 and Heroku-Redis to host image.<br>
+1. Client upload an image file to S3 and will also save Base64 string to Heroku-Redis.<br>
+2. Client download will direct from S3 but showing up is using Heroku-Redis to preview, if not include in Heroku-Redis then use S3 path to display.
+
 <h2>Setting application config vars</h2>
 <div class="CodeRay">
   <div class="code"><pre><span class="prompt">$</span><span class="function"> heroku config:set AWS_ACCESS_KEY_ID=aaa AWS_SECRET_ACCESS_KEY=bbb S3_BUCKET=ccc
